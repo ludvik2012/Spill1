@@ -1,1 +1,351 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Tower Defense - Flere Baner</title>
+ <style>
+   body {
+     background: #222;
+     color: white;
+     text-align: center;
+     font-family: Arial;
+     margin: 0;
+     padding: 0;
+   }
 
+   canvas {
+     background: #333;
+     margin-top: 10px;
+     border: 2px solid white;
+     display: block;
+     margin-left: auto;
+     margin-right: auto;
+   }
+
+   button {
+     background-color: #444;
+     border: none;
+     color: white;
+     padding: 10px;
+     font-size: 16px;
+     cursor: pointer;
+   }
+
+   button:hover {
+     background-color: #555;
+   }
+
+   #levelInfo, #score, #stats, #waveInfo {
+     margin: 10px 0;
+   }
+
+   .hidden {
+     display: none;
+   }
+
+   .game-over {
+     position: absolute;
+     top: 50%;
+     left: 50%;
+     transform: translate(-50%, -50%);
+     background-color: rgba(0, 0, 0, 0.7);
+     padding: 30px;
+     border-radius: 10px;
+     color: white;
+     font-size: 24px;
+   }
+ </style>
+</head>
+<body>
+
+<h1>Tower Defense - Flere Baner</h1>
+<p>Klikk eller trykk for å plassere tårn (koster 50)</p>
+<p id="stats"></p>
+<p id="score">Poeng: 0</p>
+
+<button id="startGame" onclick="startGame()">Start Spill</button>
+<button id="nextLevel" onclick="nextLevel()">Neste Bane</button>
+<p id="levelInfo"></p>
+<p id="waveInfo"></p>
+
+<canvas id="game"></canvas>
+
+<div id="gameOver" class="game-over hidden">
+ <h2>Game Over</h2>
+ <p>Poeng: <span id="finalScore"></span></p>
+ <button onclick="restartGame()">Start på nytt</button>
+</div>
+
+<script>
+ const canvas = document.getElementById("game");
+ const ctx = canvas.getContext("2d");
+
+ let money = 100;
+ let lives = 10;
+ let score = 0;
+ let currentLevel = 0;
+ let enemies = [];
+ let towers = [];
+ let bullets = [];
+ let enemiesKilled = 0;
+ let enemiesToKillForNextLevel = 5;
+ let gameInterval;
+ let spawnInterval;
+ let currentWave = 1;
+
+ const levels = [
+   {
+     name: "Bane 1",
+     path: [
+       {x: 0, y: 180},
+       {x: 800, y: 180}
+     ],
+     enemySpeed: 1,
+     enemyHp: 30,
+     enemyCount: 5
+   },
+   {
+     name: "Bane 2",
+     path: [
+       {x: 0, y: 180},
+       {x: 200, y: 100},
+       {x: 600, y: 100},
+       {x: 800, y: 180}
+     ],
+     enemySpeed: 1.5,
+     enemyHp: 50,
+     enemyCount: 6
+   },
+   {
+     name: "Bane 3",
+     path: [
+       {x: 0, y: 180},
+       {x: 200, y: 100},
+       {x: 400, y: 50},
+       {x: 600, y: 100},
+       {x: 800, y: 180}
+     ],
+     enemySpeed: 2,
+     enemyHp: 70,
+     enemyCount: 7
+   }
+ ];
+
+ class Enemy {
+   constructor(level) {
+     this.x = 0;
+     this.y = 180;
+     this.hp = level.enemyHp * currentWave;
+     this.speed = level.enemySpeed + (currentWave - 1) * 0.2;
+     this.pathIndex = 0;
+     this.path = level.path;
+   }
+
+   update() {
+     const target = this.path[this.pathIndex];
+     const dx = target.x - this.x;
+     const dy = target.y - this.y;
+     const dist = Math.sqrt(dx * dx + dy * dy);
+
+     if (dist < this.speed) {
+       this.pathIndex++;
+       if (this.pathIndex >= this.path.length) {
+         lives--;
+         this.hp = 0;
+       }
+     } else {
+       this.x += dx / dist * this.speed;
+       this.y += dy / dist * this.speed;
+     }
+   }
+
+   draw() {
+     ctx.fillStyle = "red";
+     ctx.fillRect(this.x - 10, this.y - 10, 20, 20);
+   }
+ }
+
+ class Tower {
+   constructor(x, y) {
+     this.x = x;
+     this.y = y;
+     this.range = 120;
+     this.cooldown = 0;
+     this.damage = 10;
+     this.upgradeLevel = 0;
+   }
+
+   update() {
+     if (this.cooldown > 0) {
+       this.cooldown--;
+       return;
+     }
+     for (let enemy of enemies) {
+       const dx = enemy.x - this.x;
+       const dy = enemy.y - this.y;
+       const dist = Math.sqrt(dx * dx + dy * dy);
+       if (dist < this.range) {
+         bullets.push(new Bullet(this.x, this.y, enemy, this.damage));
+         this.cooldown = 30;
+         break;
+       }
+     }
+   }
+
+   draw() {
+     ctx.fillStyle = "blue";
+     ctx.beginPath();
+     ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
+     ctx.fill();
+   }
+
+   upgrade() {
+     if (money >= 50) {
+       this.upgradeLevel++;
+       this.damage += 5;
+       money -= 50;
+     }
+   }
+ }
+
+ class Bullet {
+   constructor(x, y, target, damage) {
+     this.x = x;
+     this.y = y;
+     this.target = target;
+     this.speed = 4;
+     this.damage = damage;
+   }
+
+   update() {
+     if (!this.target || this.target.hp <= 0) return;
+     const dx = this.target.x - this.x;
+     const dy = this.target.y - this.y;
+     const dist = Math.sqrt(dx * dx + dy * dy);
+     if (dist < 5) {
+       this.target.hp -= this.damage;
+       if (this.target.hp <= 0) {
+         enemiesKilled++;
+         money += Math.ceil(1 + this.target.hp / 10);
+       }
+       this.dead = true;
+       return;
+     }
+     this.x += dx / dist * this.speed;
+     this.y += dy / dist * this.speed;
+   }
+
+   draw() {
+     ctx.fillStyle = "yellow";
+     ctx.beginPath();
+     ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+     ctx.fill();
+   }
+ }
+
+ function startGame() {
+   document.getElementById("startGame").style.display = "none";
+   document.getElementById("nextLevel").style.display = "block";
+   document.getElementById("gameOver").classList.add("hidden");
+   currentLevel = 0;
+   money = 100;
+   lives = 10;
+   score = 0;
+   enemies = [];
+   towers = [];
+   bullets = [];
+   enemiesKilled = 0;
+   currentWave = 1;
+   document.getElementById("levelInfo").innerText = `Nå spiller du på: ${levels[currentLevel].name}`;
+   document.getElementById("waveInfo").innerText = `Bølge: ${currentWave}`;
+   spawnEnemy();
+   gameInterval = setInterval(update, 1000 / 60);
+   spawnInterval = setInterval(spawnEnemy, 2000);
+ }
+
+ function nextLevel() {
+   if (enemiesKilled >= enemiesToKillForNextLevel) {
+     currentWave++;
+     enemiesToKillForNextLevel += 2;
+     enemiesKilled = 0;
+     enemies = [];
+     towers = [];
+     bullets = [];
+     document.getElementById("levelInfo").innerText = `Nå spiller du på: ${levels[currentLevel].name}`;
+     document.getElementById("waveInfo").innerText = `Bølge: ${currentWave}`;
+   } else {
+     alert(`Du må drepe ${enemiesToKillForNextLevel - enemiesKilled} flere fiender før du kan gå videre!`);
+   }
+ }
+
+ function spawnEnemy() {
+   for (let i = 0; i < levels[currentLevel].enemyCount; i++) {
+     enemies.push(new Enemy(levels[currentLevel]));
+   }
+ }
+
+ function update() {
+   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+   ctx.strokeStyle = "gray";
+   ctx.lineWidth = 40;
+   ctx.beginPath();
+   ctx.moveTo(levels[currentLevel].path[0].x, levels[currentLevel].path[0].y);
+   for (let i = 1; i < levels[currentLevel].path.length; i++) {
+     ctx.lineTo(levels[currentLevel].path[i].x, levels[currentLevel].path[i].y);
+   }
+   ctx.stroke();
+
+   enemies.forEach(e => e.update());
+   towers.forEach(t => t.update());
+   bullets.forEach(b => b.update());
+
+   enemies = enemies.filter(e => e.hp > 0);
+   bullets = bullets.filter(b => !b.dead);
+
+   enemies.forEach(e => e.draw());
+   towers.forEach(t => t.draw());
+   bullets.forEach(b => b.draw());
+
+   document.getElementById("stats").innerText = `Penger: ${money} | Liv: ${lives}`;
+   document.getElementById("score").innerText = `Poeng: ${score}`;
+
+   if (lives <= 0) {
+     endGame();
+   }
+ }
+
+ function endGame() {
+   clearInterval(gameInterval);
+   clearInterval(spawnInterval);
+   document.getElementById("finalScore").innerText = score;
+   document.getElementById("gameOver").classList.remove("hidden");
+ }
+
+ function restartGame() {
+   document.getElementById("gameOver").classList.add("hidden");
+   startGame();
+ }
+
+ canvas.addEventListener("click", (e) => {
+   if (money < 50) return;
+   const rect = canvas.getBoundingClientRect();
+   const x = e.clientX - rect.left;
+   const y = e.clientY - rect.top;
+   towers.push(new Tower(x, y));
+   money -= 50;
+ });
+
+ window.addEventListener("resize", resizeCanvas);
+
+ function resizeCanvas() {
+   canvas.width = window.innerWidth;
+   canvas.height = window.innerHeight - 100;
+ }
+
+ resizeCanvas(); 
+</script>
+
+</body>
+</html>
