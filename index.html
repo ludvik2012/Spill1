@@ -119,11 +119,9 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <script>
-        // Setup canvas
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // GAME VARIABLES
         let gold = 0;
         let prestigePoints = 0;
         let enemies = [];
@@ -133,11 +131,8 @@
         let waveNumber = 0;
         let enemyWave = [];
         let skills = { fireRate: 1, damage: 1, range: 100, armorPierce: 0 };
-
-        // GAME STATE
         let gameOver = false;
 
-        // TOWER TYPES CONFIG
         const towerTypes = {
             basic: { cost: 50, damage: 5, fireRate: 1, range: 100 },
             sniper: { cost: 150, damage: 20, fireRate: 0.5, range: 250 },
@@ -145,7 +140,6 @@
             mage: { cost: 500, damage: 70, fireRate: 0.8, range: 150 }
         };
 
-        // ENEMY TYPES CONFIG
         const enemyTypes = [
             { name: 'Goblin', hp: 50, speed: 1, reward: 5, armor: 0, resistance: 0 },
             { name: 'Orc', hp: 150, speed: 0.8, reward: 15, armor: 10, resistance: 0 },
@@ -153,7 +147,6 @@
             { name: 'Dragon', hp: 1000, speed: 0.3, reward: 100, armor: 30, resistance: 0.2 }
         ];
 
-        // SPAWN ENEMIES
         function spawnEnemies() {
             if (gameOver) return;
             const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
@@ -174,16 +167,14 @@
             waveNumber++;
             document.getElementById('wave').innerText = waveNumber;
 
-            // Check if the player wins
             if (waveNumber >= 10) {
                 gameOver = true;
                 document.getElementById('gameOver').style.display = 'block';
             } else {
-                setTimeout(spawnEnemies, 5000); // Spawn new wave every 5 seconds
+                setTimeout(spawnEnemies, 5000);
             }
         }
 
-        // TOWER BUILDING
         function buildTower(type) {
             if (gameOver) return;
             const tower = towerTypes[type];
@@ -194,7 +185,6 @@
             }
         }
 
-        // SKILL TREE UPGRADE
         function upgradeSkill(skill) {
             if (gameOver) return;
             if (gold >= 100) {
@@ -204,7 +194,6 @@
             }
         }
 
-        // PRESTIGE
         function prestige() {
             if (gameOver) return;
             prestigePoints += Math.floor(gold / 1000);
@@ -216,7 +205,6 @@
             updateUI();
         }
 
-        // SHOOT PROJECTILE
         function shoot(tower, target) {
             projectiles.push({
                 x: tower.x,
@@ -227,11 +215,9 @@
             });
         }
 
-        // GAME LOOP
         function update(delta) {
             if (gameOver) return;
 
-            // Update enemies position
             enemies.forEach(e => {
                 e.x += e.speed;
                 if (e.x > canvas.width) {
@@ -239,7 +225,6 @@
                 }
             });
 
-            // Update towers and shooting
             towers.forEach(t => {
                 t.cooldown -= delta;
                 if (t.cooldown <= 0) {
@@ -251,7 +236,6 @@
                 }
             });
 
-            // Update projectiles
             projectiles.forEach(p => {
                 const dx = p.target.x - p.x;
                 const dy = p.target.y - p.y;
@@ -269,37 +253,33 @@
             });
             projectiles = projectiles.filter(p => !p.hit);
 
-            // Calculate DPS and update graph
-            const dps = towers.reduce((acc, t) => acc + (towerTypes[t.type].damage * t.level * skills.damage), 0);
+            const dps = towers.reduce((acc, t) => acc + (towerTypes[t.type].damage * skills.damage), 0);
             dpsHistory.push(dps);
             if (dpsHistory.length > 50) dpsHistory.shift();
             renderGraph();
         }
 
-        // RENDERING GRAPH
         function renderGraph() {
             const graph = document.getElementById('dpsGraph');
             graph.innerHTML = dpsHistory.map(v => '<span></span>').join('');
         }
 
-        // RENDERING GAME
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Draw Towers
             towers.forEach(t => {
                 ctx.fillStyle = 'cyan';
                 ctx.beginPath();
                 ctx.arc(t.x, t.y, 10, 0, Math.PI * 2);
                 ctx.fill();
             });
-            // Draw Enemies
+
             enemies.forEach(e => {
                 ctx.fillStyle = 'red';
                 ctx.fillRect(e.x - 10, e.y - 10, 20, 20);
                 ctx.fillStyle = 'lime';
                 ctx.fillRect(e.x - 10, e.y - 12, 20 * (e.hp / e.maxHp), 2);
             });
-            // Draw Projectiles
+
             projectiles.forEach(p => {
                 ctx.fillStyle = 'yellow';
                 ctx.beginPath();
@@ -308,18 +288,15 @@
             });
         }
 
-        // DISTANCE CALCULATION
         function distance(a, b) {
             return Math.hypot(a.x - b.x, a.y - b.y);
         }
 
-        // UI UPDATE
         function updateUI() {
             document.getElementById('gold').innerText = Math.floor(gold);
             document.getElementById('prestige').innerText = prestigePoints;
         }
 
-        // RESTART GAME
         function restartGame() {
             gameOver = false;
             gold = 0;
@@ -333,7 +310,6 @@
             spawnEnemies();
         }
 
-        // GAME LOOP
         let lastTime = 0;
         function loop(timestamp) {
             const delta = (timestamp - lastTime) / 1000;
