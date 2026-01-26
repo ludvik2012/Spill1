@@ -1,183 +1,91 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ultimate Tower Defense – Alt i én fil</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ultimate Tower Defense – Definitive Edition</title>
 
 <style>
-  body {
-    margin: 0;
-    background: #101015;
-    color: #f5f5f5;
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+/* ================== GLOBAL ================== */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #0f1016;
+  color: #eee;
+  font-family: system-ui, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+button, select {
+  background: #2c2f44;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+button:hover { background: #40446a; cursor: pointer; }
+canvas {
+  border: 2px solid #555;
+  background: radial-gradient(circle at top, #2a2d45, #12131a 70%);
+  touch-action: none;
+}
 
-  #ui {
-    width: 100%;
-    max-width: 1200px;
-    display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    background: #14141c;
-    box-sizing: border-box;
-    border-bottom: 2px solid #333;
-  }
-
-  #leftPanel {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  #stats, #waveInfo, #bestScore, #prestigeInfo {
-    font-size: 14px;
-  }
-
-  #towerShop {
-    margin-top: 8px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .towerBtn {
-    background: #26263a;
-    color: white;
-    border: 1px solid #555;
-    padding: 6px 8px;
-    cursor: pointer;
-    font-size: 12px;
-    border-radius: 4px;
-  }
-
-  .towerBtn:hover {
-    background: #3a3a5a;
-  }
-
-  button {
-    background: #303048;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    margin: 4px 0;
-    cursor: pointer;
-    border-radius: 4px;
-  }
-
-  button:hover { background: #44446a; }
-
-  select {
-    background: #222236;
-    color: white;
-    border: 1px solid #555;
-    padding: 4px 6px;
-    margin-top: 4px;
-    border-radius: 4px;
-  }
-
-  canvas {
-    background: radial-gradient(circle at top, #2b2b3f 0, #181820 60%, #101015 100%);
-    border: 2px solid #555;
-    touch-action: none;
-    box-shadow: 0 0 20px rgba(0,0,0,0.7);
-  }
-
-  #overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    color: white;
-    z-index: 10;
-  }
-
-  #towerUI {
-    margin-top: 8px;
-    font-size: 13px;
-  }
-
-  .label {
-    font-weight: bold;
-  }
-
-  #abilities {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  #prestigePanel {
-    margin-top: 8px;
-    font-size: 12px;
-  }
-
-  #upgradeChoices {
-    margin-top: 6px;
-    font-size: 12px;
-  }
-
-  #upgradeChoices button {
-    font-size: 11px;
-    padding: 4px 6px;
-  }
-
-  #rightPanel {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
+/* ================== UI ================== */
+#ui {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: #141522;
+  border-bottom: 2px solid #333;
+}
+.panel { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.label { font-weight: bold; opacity: 0.85; }
+#shop { display: flex; flex-wrap: wrap; gap: 4px; }
+.shopBtn {
+  font-size: 11px;
+  background: #262944;
+  border: 1px solid #555;
+}
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 10;
+}
 </style>
 </head>
 
 <body>
 
 <div id="ui">
-  <div id="leftPanel">
+  <div class="panel">
     <div id="stats"></div>
     <div id="waveInfo"></div>
     <div id="bestScore"></div>
-    <div id="prestigeInfo"></div>
     <button onclick="togglePause()">Pause</button>
+    <button onclick="startGame()">Restart</button>
 
-    <div>
-      <div class="label">Vanskelighetsgrad</div>
-      <select id="difficultySelect">
-        <option value="easy">Easy</option>
-        <option value="normal" selected>Normal</option>
-        <option value="hard">Hard</option>
-        <option value="insane">Insane</option>
-      </select>
-    </div>
+    <div class="label">Abilities</div>
+    <button onclick="useFreeze()">❄ Freeze</button>
+    <button onclick="useAirstrike()">💣 Airstrike</button>
+    <div id="abilityInfo"></div>
 
-    <div id="abilities">
-      <div class="label">Evner</div>
-      <button onclick="useFreeze()">❄ Freeze All</button>
-      <button onclick="useAirstrike()">💣 Airstrike</button>
-      <div id="abilityInfo" style="font-size:12px;"></div>
-    </div>
-
-    <div id="prestigePanel">
-      <div class="label">Prestige</div>
-      <div id="prestigeBonuses"></div>
-      <button onclick="doPrestige()">Prestige (reset, få poeng)</button>
-    </div>
-
-    <div id="towerUI"></div>
-    <div id="upgradeChoices"></div>
+    <div class="label">Prestige</div>
+    <div id="prestigeInfo"></div>
+    <button onclick="doPrestige()">Spend point</button>
   </div>
 
-  <div id="rightPanel">
-    <div class="label">Tårnbutikk</div>
-    <div id="towerShop"></div>
-    <button onclick="startGame()">Start / Restart</button>
+  <div class="panel">
+    <div class="label">Tower Shop</div>
+    <div id="shop"></div>
+    <div id="towerInfo"></div>
   </div>
 </div>
 
@@ -186,1089 +94,266 @@
 <div id="overlay">
   <h1>Game Over</h1>
   <p id="finalScore"></p>
-  <button onclick="startGame()">Spill igjen</button>
+  <button onclick="startGame()">Play Again</button>
 </div>
 
 <script>
+/* ======================================================
+   CONFIG / DATA
+====================================================== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let money, lives, score, wave, paused, gameRunning;
-let enemies = [], towers = [], bullets = [], particles = [];
-let selectedTower = null;
-let spawnTimer = 0;
-let enemiesToSpawn = 0;
-let spawnInterval = 40;
-let waveInProgress = false;
-
-let freezeCharges = 1;
-let airstrikeCharges = 1;
-
-const bestScoreKey = "td_best_score_ultimate";
-const prestigeKey = "td_prestige_data_ultimate";
-
 const path = [
-  {x: 0,   y: 320},
-  {x: 220, y: 320},
-  {x: 220, y: 160},
-  {x: 600, y: 160},
-  {x: 600, y: 470},
-  {x: 1000,y: 470},
-  {x: 1250,y: 470}
+  {x:0,y:330},{x:220,y:330},{x:220,y:170},
+  {x:600,y:170},{x:600,y:480},{x:1050,y:480}
 ];
 
-const difficulties = {
-  easy:   { enemyHp: 0.7, enemySpeed: 0.9, moneyBonus: 1.3 },
-  normal: { enemyHp: 1.0, enemySpeed: 1.0, moneyBonus: 1.0 },
-  hard:   { enemyHp: 1.3, enemySpeed: 1.1, moneyBonus: 0.9 },
-  insane: { enemyHp: 1.7, enemySpeed: 1.25, moneyBonus: 0.75 }
+const TOWERS = {
+  soldier:{cost:70, dmg:20, range:140, rate:26, color:"steelblue"},
+  mage:{cost:140, dmg:16, range:170, rate:34, color:"orchid"},
+  splash:{cost:190, dmg:26, range:150, rate:42, color:"orange", splash:60},
+  frost:{cost:160, dmg:10, range:160, rate:36, color:"cyan", slow:0.45},
+  sniper:{cost:260, dmg:90, range:360, rate:90, color:"white"},
+  support:{cost:200, dmg:0, range:140, rate:0, color:"lime", buff:1.25}
 };
 
-let currentDifficulty = difficulties.normal;
-
-// Prestige-data
-let prestige = {
-  points: 0,
-  dmg: 0,
-  range: 0,
-  money: 0,
-  reward: 0,
-  lives: 0,
-  abilities: 0
+const ENEMIES = {
+  basic:{hp:60, speed:0.9, reward:8, color:"green"},
+  fast:{hp:40, speed:1.4, reward:7, color:"violet"},
+  tank:{hp:130, speed:0.7, reward:14, color:"saddlebrown"},
+  shield:{hp:80, speed:0.9, reward:12, shield:70, color:"lightblue"}
 };
 
-function loadPrestige() {
-  const raw = localStorage.getItem(prestigeKey);
-  if (raw) {
-    try {
-      prestige = JSON.parse(raw);
-    } catch {}
-  }
-}
+const BOSS = { hp:2800, speed:0.75, reward:300, color:"crimson" };
 
-function savePrestige() {
-  localStorage.setItem(prestigeKey, JSON.stringify(prestige));
-}
+/* ======================================================
+   GAME STATE
+====================================================== */
+let money,lives,score,wave,paused,gameRunning;
+let enemies=[], towers=[], bullets=[], particles=[];
+let selectedTowerType="soldier";
+let freezeCharges, airstrikeCharges;
 
-function prestigeMultiplierDmg()   { return 1 + prestige.dmg * 0.05; }
-function prestigeMultiplierRange() { return 1 + prestige.range * 0.05; }
-function prestigeMultiplierMoney() { return 1 + prestige.money * 0.05; }
-function prestigeMultiplierReward(){ return 1 + prestige.reward * 0.05; }
-function prestigeBonusLives()      { return prestige.lives; }
-function prestigeBonusAbilities()  { return prestige.abilities; }
-
-function updatePrestigeUI() {
-  document.getElementById("prestigeInfo").innerText =
-    `Prestige-poeng: ${prestige.points}`;
-  document.getElementById("prestigeBonuses").innerText =
-    `Skade +${prestige.dmg*5}% | Rekkevidde +${prestige.range*5}% | Startpenger +${prestige.money*5}% | Belønning +${prestige.reward*5}% | Ekstra liv +${prestige.lives} | Ekstra evner +${prestige.abilities}`;
-}
-
-// Tårn
-const towerTypes = {
-  soldier: {
-    name: "Soldat",
-    cost: 70,
-    color: "steelblue",
-    baseRange: 150,
-    baseDamage: 22,
-    fireRate: 26,
-    projectileColor: "yellow",
-    projectileSize: 4
-  },
-  mage: {
-    name: "Magiker",
-    cost: 150,
-    color: "mediumorchid",
-    baseRange: 170,
-    baseDamage: 18,
-    fireRate: 32,
-    projectileColor: "cyan",
-    projectileSize: 5,
-    magic: true
-  },
-  splash: {
-    name: "Bombekaster",
-    cost: 200,
-    color: "orange",
-    baseRange: 150,
-    baseDamage: 26,
-    fireRate: 40,
-    projectileColor: "orange",
-    projectileSize: 5,
-    splashRadius: 55
-  },
-  frost: {
-    name: "Frost-tårn",
-    cost: 160,
-    color: "deepskyblue",
-    baseRange: 160,
-    baseDamage: 12,
-    fireRate: 34,
-    projectileColor: "lightcyan",
-    projectileSize: 4,
-    slowFactor: 0.5,
-    slowDuration: 70
-  },
-  flame: {
-    name: "Flammetårn",
-    cost: 180,
-    color: "orangered",
-    baseRange: 120,
-    baseDamage: 4,
-    fireRate: 6,
-    projectileColor: "gold",
-    projectileSize: 4,
-    burnDamage: 2,
-    burnDuration: 60
-  },
-  sniper: {
-    name: "Sniper",
-    cost: 250,
-    color: "white",
-    baseRange: 350,
-    baseDamage: 90,
-    fireRate: 80,
-    projectileColor: "white",
-    projectileSize: 3
-  },
-  laser: {
-    name: "Laser",
-    cost: 300,
-    color: "cyan",
-    baseRange: 200,
-    baseDamage: 15,
-    fireRate: 4,
-    projectileColor: "cyan",
-    projectileSize: 3,
-    pierce: 4
-  }
+let prestige = JSON.parse(localStorage.getItem("td_prestige_v2")) || {
+  points:0, dmg:0, range:0, money:0
 };
 
-let selectedTowerType = "soldier";
-
-// Monster-typer
-const enemyTypes = {
-  ork:   { color: "green",      baseHp: 60,  speed: 0.9, reward: 10 },
-  zombie:{ color: "palegreen",  baseHp: 40,  speed: 0.6, reward: 7,  splits: true },
-  demon: { color: "crimson",    baseHp: 80,  speed: 1.0, reward: 12, explodes: true },
-  slime: { color: "lime",       baseHp: 30,  speed: 1.4, reward: 6  },
-  beast: { color: "saddlebrown",baseHp: 100, speed: 0.9, reward: 15 },
-  shield:{ color: "lightblue",  baseHp: 60,  speed: 0.9, reward: 12, shield: 60 },
-  dash:  { color: "violet",     baseHp: 45,  speed: 1.2, reward: 10, dash: true }
-};
-
-// Boss-typer
-const bossTypes = {
-  demonBoss:   { color: "darkred",       baseHp: 2200, speed: 0.8, reward: 260, explodes: true },
-  shieldTitan: { color: "lightsteelblue",baseHp: 2600, speed: 0.7, reward: 300, shield: 700 },
-  zombieKing:  { color: "darkgreen",     baseHp: 2400, speed: 0.8, reward: 280, splits: true },
-  beastAlpha:  { color: "sienna",        baseHp: 2800, speed: 1.1, reward: 320, dash: true }
-};
-
-function isBossWave(w) {
-  return w > 0 && w % 10 === 0;
-}
-
+/* ======================================================
+   CLASSES
+====================================================== */
 class Enemy {
-  constructor(kind, wave, isBoss = false, bossKey = null) {
-    this.kind = kind;
-    this.isBoss = isBoss;
-    let base;
-    if (isBoss && bossKey) {
-      base = bossTypes[bossKey];
-    } else {
-      base = enemyTypes[kind];
-    }
-
-    let scale = 1 + wave * 0.05;
-    if (wave > 10) scale *= 1.2;
-    if (wave > 20) scale *= 1.4;
-
-    if (isBoss) {
-      this.maxHp = base.baseHp * (1 + wave * 0.1) * currentDifficulty.enemyHp;
-      this.speed = base.speed * currentDifficulty.enemySpeed;
-      this.reward = Math.floor(base.reward * currentDifficulty.moneyBonus * prestigeMultiplierReward());
-    } else {
-      this.maxHp = base.baseHp * scale * currentDifficulty.enemyHp;
-      this.speed = base.speed * currentDifficulty.enemySpeed;
-      this.reward = Math.floor(base.reward * currentDifficulty.moneyBonus * prestigeMultiplierReward());
-    }
-
+  constructor(type,isBoss=false){
+    const b = isBoss ? BOSS : ENEMIES[type];
+    const scale = 1 + wave*0.06;
+    this.maxHp = b.hp*scale;
     this.hp = this.maxHp;
+    this.speed = b.speed;
     this.baseSpeed = this.speed;
-    this.color = base.color;
-
-    this.pathIndex = 0;
+    this.reward = Math.floor(b.reward*(1+prestige.money*0.1));
+    this.color = b.color;
+    this.shield = b.shield||0;
     this.x = path[0].x;
     this.y = path[0].y;
-    this.slowTimer = 0;
-
-    this.shield = base.shield || 0;
-    this.splits = !!base.splits;
-    this.explodes = !!base.explodes;
-    this.dash = !!base.dash;
-    this.dashTimer = 0;
-    this.burn = null;
+    this.i = 0;
   }
-
-  applySlow(factor, duration) {
-    if (this.slowTimer <= 0) {
-      this.speed = this.baseSpeed * factor;
-    }
-    this.slowTimer = Math.max(this.slowTimer, duration);
+  update(){
+    const t = path[this.i+1];
+    if(!t){ this.hp=0; lives--; return; }
+    const dx=t.x-this.x, dy=t.y-this.y;
+    const d=Math.hypot(dx,dy);
+    if(d<this.speed){ this.i++; }
+    else{ this.x+=dx/d*this.speed; this.y+=dy/d*this.speed; }
   }
-
-  update() {
-    if (this.burn && this.burn.timer > 0) {
-      this.hp -= this.burn.dmg * 0.1;
-      this.burn.timer--;
-    }
-
-    if (this.slowTimer > 0) {
-      this.slowTimer--;
-      if (this.slowTimer <= 0) {
-        this.speed = this.baseSpeed;
-      }
-    }
-
-    if (this.dash) {
-      this.dashTimer++;
-      if (this.dashTimer > 180) {
-        this.speed = this.baseSpeed * 2.2;
-        setTimeout(() => { this.speed = this.baseSpeed; }, 400);
-        this.dashTimer = 0;
-      }
-    }
-
-    const target = path[this.pathIndex + 1];
-    if (!target) {
-      lives--;
-      this.hp = 0;
-      return;
-    }
-    const dx = target.x - this.x;
-    const dy = target.y - this.y;
-    const d = Math.hypot(dx, dy);
-    if (d < this.speed) {
-      this.pathIndex++;
-    } else {
-      this.x += dx / d * this.speed;
-      this.y += dy / d * this.speed;
-    }
-  }
-
-  draw() {
-    const size = this.isBoss ? 34 : 18;
-
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
+  draw(){
+    ctx.fillStyle=this.color;
     ctx.beginPath();
-    ctx.ellipse(this.x, this.y + 7, size * 0.8, size * 0.35, 0, 0, Math.PI * 2);
+    ctx.arc(this.x,this.y,10,0,Math.PI*2);
     ctx.fill();
-
-    const grad = ctx.createRadialGradient(this.x - 4, this.y - 4, 4, this.x, this.y, size/2);
-    grad.addColorStop(0, "#ffffff");
-    grad.addColorStop(0.3, this.color);
-    grad.addColorStop(1, "#000000");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, size / 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "black";
-    ctx.beginPath();
-    ctx.arc(this.x - 4, this.y - 3, 2, 0, Math.PI * 2);
-    ctx.arc(this.x + 4, this.y - 3, 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y + 3, 5, 0, Math.PI);
-    ctx.stroke();
-
-    const barWidth = this.isBoss ? 90 : 32;
-    const barHeight = 5;
-    const hpRatio = Math.max(this.hp / this.maxHp, 0);
-    ctx.fillStyle = "black";
-    ctx.fillRect(this.x - barWidth/2, this.y - size - 8, barWidth, barHeight);
-    ctx.fillStyle = hpRatio > 0.5 ? "lime" : hpRatio > 0.25 ? "yellow" : "red";
-    ctx.fillRect(this.x - barWidth/2, this.y - size - 8, barWidth * hpRatio, barHeight);
-
-    if (this.shield > 0) {
-      ctx.strokeStyle = "rgba(173,216,230,0.8)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, size/2 + 4, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    if (this.slowTimer > 0) {
-      ctx.strokeStyle = "cyan";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, size/2 + 7, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    if (this.burn && this.burn.timer > 0) {
-      ctx.strokeStyle = "orange";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, size/2 + 10, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    ctx.fillStyle="red";
+    ctx.fillRect(this.x-15,this.y-18,30*(this.hp/this.maxHp),4);
   }
 }
 
 class Tower {
-  constructor(x, y, typeKey) {
-    const t = towerTypes[typeKey];
-    this.typeKey = typeKey;
-    this.x = x;
-    this.y = y;
-    this.baseRange = t.baseRange * prestigeMultiplierRange();
-    this.baseDamage = t.baseDamage * prestigeMultiplierDmg();
-    this.range = this.baseRange;
-    this.damage = this.baseDamage;
-    this.fireRate = t.fireRate;
-    this.cooldown = 0;
-    this.level = 1;
-    this.color = t.color;
-    this.angle = 0;
-    this.path = [];
+  constructor(x,y,type){
+    const t=TOWERS[type];
+    this.x=x; this.y=y; this.type=type;
+    this.range=t.range*(1+prestige.range*0.1);
+    this.damage=t.dmg*(1+prestige.dmg*0.1);
+    this.rate=t.rate; this.cd=0;
   }
-
-  getUpgradeCost() {
-    return 50 + this.level * 35;
-  }
-
-  upgrade(choice = null) {
-    const cost = this.getUpgradeCost();
-    if (money < cost) return;
-    money -= cost;
-
-    if (this.level === 1) {
-      if (choice === "rapid") {
-        this.path.push("rapid");
-        this.fireRate = Math.max(8, Math.floor(this.fireRate * 0.75));
-      } else if (choice === "pierce") {
-        this.path.push("pierce");
-        this.damage = Math.round(this.damage * 1.4);
-      }
-    } else if (this.level === 2) {
-      if (this.path[0] === "rapid") {
-        if (choice === "gatling") {
-          this.path.push("gatling");
-          this.fireRate = Math.max(4, Math.floor(this.fireRate * 0.7));
-          this.damage = Math.round(this.damage * 0.8);
-        }
-      } else if (this.path[0] === "pierce") {
-        if (choice === "sniper") {
-          this.path.push("sniper");
-          this.damage = Math.round(this.damage * 1.6);
-          this.range += 60;
-        }
-      }
-    } else {
-      this.damage = Math.round(this.damage * 1.25);
-      this.range += 10;
-      this.fireRate = Math.max(6, this.fireRate - 2);
+  update(){
+    if(this.rate===0) return;
+    if(this.cd>0){ this.cd--; return; }
+    let target=null, best=-1;
+    for(const e of enemies){
+      const d=Math.hypot(e.x-this.x,e.y-this.y);
+      if(d<this.range && e.hp>best){ best=e.hp; target=e; }
     }
-
-    this.level++;
-
-    for (let i = 0; i < 12; i++) {
-      particles.push(new Particle(this.x, this.y, this.color, 18, 0.9));
+    if(target){
+      bullets.push(new Bullet(this,target));
+      this.cd=this.rate;
     }
   }
-
-  update() {
-    if (this.cooldown > 0) {
-      this.cooldown--;
-    }
-
-    let target = null;
-    let bestProgress = -1;
-
-    for (let e of enemies) {
-      const dist = Math.hypot(e.x - this.x, e.y - this.y);
-      if (dist < this.range) {
-        const progress = e.pathIndex + dist / 1000;
-        if (progress > bestProgress) {
-          bestProgress = progress;
-          target = e;
-        }
-      }
-    }
-
-    if (target) {
-      this.angle = Math.atan2(target.y - this.y, target.x - this.x);
-      if (this.cooldown <= 0) {
-        bullets.push(new Bullet(this, target));
-        this.cooldown = this.fireRate;
-
-        for (let i = 0; i < 4; i++) {
-          particles.push(new Particle(
-            this.x + Math.cos(this.angle) * 10,
-            this.y + Math.sin(this.angle) * 10,
-            towerTypes[this.typeKey].projectileColor,
-            10,
-            0.8
-          ));
-        }
-      }
-    }
-  }
-
-  draw() {
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
+  draw(){
+    ctx.fillStyle=TOWERS[this.type].color;
     ctx.beginPath();
-    ctx.ellipse(this.x, this.y + 7, 15, 6, 0, 0, Math.PI * 2);
+    ctx.arc(this.x,this.y,12,0,Math.PI*2);
     ctx.fill();
-
-    if (selectedTower === this) {
-      ctx.strokeStyle = "rgba(255,255,255,0.25)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    ctx.save();
-    ctx.translate(this.x, this.y);
-
-    const grad = ctx.createRadialGradient(-4, -4, 4, 0, 0, 14);
-    grad.addColorStop(0, "#ffffff");
-    grad.addColorStop(0.3, this.color);
-    grad.addColorStop(1, "#000000");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(0, 0, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.fillStyle = "beige";
-    ctx.beginPath();
-    ctx.arc(0, -10, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.strokeStyle = "black";
-    ctx.beginPath();
-    ctx.moveTo(0, -4);
-    ctx.lineTo(0, 6);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0, -2);
-    ctx.lineTo(-6, 4);
-    ctx.moveTo(0, -2);
-    ctx.lineTo(6, 4);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0, 6);
-    ctx.lineTo(-5, 14);
-    ctx.moveTo(0, 6);
-    ctx.lineTo(5, 14);
-    ctx.stroke();
-
-    ctx.rotate(this.angle);
-    ctx.strokeStyle = this.typeKey === "mage" ? "cyan" : "white";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(18, 0);
-    ctx.stroke();
-
-    ctx.restore();
-
-    ctx.fillStyle = "white";
-    ctx.font = "10px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(this.level, this.x, this.y + 18);
   }
 }
 
 class Bullet {
-  constructor(tower, enemy) {
-    this.tower = tower;
-    this.x = tower.x;
-    this.y = tower.y;
-    this.e = enemy;
-    this.speed = 6;
-    this.d = tower.damage;
-    this.dead = false;
+  constructor(t,e){
+    this.x=t.x; this.y=t.y;
+    this.e=e; this.d=t.damage; this.dead=false;
   }
-
-  update() {
-    if (!this.e || this.e.hp <= 0) {
-      this.dead = true;
-      return;
-    }
-    const dx = this.e.x - this.x;
-    const dy = this.e.y - this.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 6) {
-      this.hit();
-      this.dead = true;
+  update(){
+    if(!this.e||this.e.hp<=0){this.dead=true;return;}
+    const dx=this.e.x-this.x, dy=this.e.y-this.y;
+    const d=Math.hypot(dx,dy);
+    if(d<6){
+      if(this.e.shield>0){
+        this.e.shield-=this.d;
+        if(this.e.shield<0){this.e.hp+=this.e.shield;this.e.shield=0;}
+      } else this.e.hp-=this.d;
+      if(this.e.hp<=0){
+        money+=this.e.reward;
+        score+=this.e.reward;
+      }
+      this.dead=true;
     } else {
-      this.x += dx / d * this.speed;
-      this.y += dy / d * this.speed;
+      this.x+=dx/d*6; this.y+=dy/d*6;
     }
   }
-
-  hit() {
-    const typeKey = this.tower.typeKey;
-    const tType = towerTypes[typeKey];
-    const e = this.e;
-
-    for (let i = 0; i < 8; i++) {
-      particles.push(new Particle(e.x, e.y, tType.projectileColor, 14, 0.85));
-    }
-
-    if (typeKey === "laser") {
-      let pierce = tType.pierce;
-      for (let enemy of enemies) {
-        if (pierce <= 0) break;
-        if (Math.hypot(enemy.x - this.x, enemy.y - this.y) < 20) {
-          this.applyDamage(enemy);
-          pierce--;
-        }
-      }
-      return;
-    }
-
-    if (typeKey === "splash") {
-      for (let enemy of enemies) {
-        const dist = Math.hypot(enemy.x - e.x, enemy.y - e.y);
-        if (dist <= (tType.splashRadius + this.tower.level * 4)) {
-          this.applyDamage(enemy);
-        }
-      }
-    } else {
-      this.applyDamage(e);
-      if (typeKey === "frost") {
-        e.applySlow(tType.slowFactor, tType.slowDuration + this.tower.level * 10);
-      }
-      if (typeKey === "flame") {
-        if (!e.burn || e.burn.timer <= 0) {
-          e.burn = { dmg: tType.burnDamage, timer: tType.burnDuration };
-        } else {
-          e.burn.timer += 20;
-        }
-      }
-    }
-  }
-
-  applyDamage(e) {
-    if (e.shield > 0) {
-      e.shield -= this.d;
-      if (e.shield < 0) {
-        e.hp += e.shield;
-        e.shield = 0;
-      }
-    } else {
-      e.hp -= this.d;
-    }
-
-    if (e.hp <= 0) {
-      this.killEnemy(e);
-    }
-  }
-
-  killEnemy(e) {
-    money += e.reward * prestigeMultiplierMoney();
-    score += e.reward;
-
-    for (let i = 0; i < 18; i++) {
-      particles.push(new Particle(e.x, e.y, e.color, 20, 0.9));
-    }
-
-    if (e.splits && !e.isBoss) {
-      enemies.push(new Enemy("slime", wave));
-      enemies.push(new Enemy("slime", wave));
-    }
-
-    if (e.explodes) {
-      for (let enemy of enemies) {
-        const dist = Math.hypot(enemy.x - e.x, enemy.y - e.y);
-        if (dist < 60 && enemy !== e) {
-          enemy.hp -= 25;
-        }
-      }
-      for (let i = 0; i < 25; i++) {
-        particles.push(new Particle(e.x, e.y, "crimson", 26, 0.9));
-      }
-    }
-  }
-
-  draw() {
-    const tType = towerTypes[this.tower.typeKey];
-    ctx.fillStyle = tType.projectileColor;
+  draw(){
+    ctx.fillStyle="yellow";
     ctx.beginPath();
-    ctx.arc(this.x, this.y, tType.projectileSize, 0, Math.PI * 2);
+    ctx.arc(this.x,this.y,3,0,Math.PI*2);
     ctx.fill();
   }
 }
 
-class Particle {
-  constructor(x, y, color, maxDist, life) {
-    this.x = x;
-    this.y = y;
-    this.color = color;
-    this.life = life;
-    this.maxLife = life;
-    const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 2 + 0.5;
-    this.vx = Math.cos(angle) * speed;
-    this.vy = Math.sin(angle) * speed;
-  }
-
-  update() {
-    this.x += this.vx;
-    this.y += this.vy;
-    this.life -= 0.03;
-  }
-
-  draw() {
-    if (this.life <= 0) return;
-    const alpha = this.life / this.maxLife;
-    ctx.fillStyle = `rgba(${hexToRgb(this.color)},${alpha})`;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  isDead() {
-    return this.life <= 0;
-  }
-}
-
-function hexToRgb(color) {
-  const ctxTmp = document.createElement("canvas").getContext("2d");
-  ctxTmp.fillStyle = color;
-  const computed = ctxTmp.fillStyle;
-  const m = computed.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-  if (!m) return "255,255,255";
-  return `${m[1]},${m[2]},${m[3]}`;
-}
-
-function setupTowerShop() {
-  const shop = document.getElementById("towerShop");
-  shop.innerHTML = "";
-  Object.entries(towerTypes).forEach(([key, t]) => {
-    const btn = document.createElement("button");
-    btn.className = "towerBtn";
-    btn.textContent = `${t.name} (${t.cost})`;
-    btn.onclick = () => {
-      selectedTowerType = key;
-      selectedTower = null;
-      updateTowerUI();
-      document.getElementById("upgradeChoices").innerHTML = "";
-    };
-    shop.appendChild(btn);
-  });
-}
-
-function startGame() {
-  const diffSelect = document.getElementById("difficultySelect");
-  currentDifficulty = difficulties[diffSelect.value] || difficulties.normal;
-
-  money = Math.round(70 * prestigeMultiplierMoney());
-  lives = 15 + prestigeBonusLives();
-  score = 0;
-  wave = 1;
-  enemies = [];
-  towers = [];
-  bullets = [];
-  particles = [];
-  paused = false;
-  gameRunning = true;
-  spawnTimer = 0;
-  enemiesToSpawn = 0;
-  spawnInterval = 40;
-  waveInProgress = false;
-  selectedTower = null;
-  freezeCharges = 1 + prestigeBonusAbilities();
-  airstrikeCharges = 1 + prestigeBonusAbilities();
-  document.getElementById("overlay").style.display = "none";
-  setupTowerShop();
-  updateTowerUI();
-  updateAbilityInfo();
-  updatePrestigeUI();
-  loop();
-}
-
-function startWave() {
-  waveInProgress = true;
-  if (isBossWave(wave)) {
-    enemiesToSpawn = 1;
-    spawnInterval = 60;
-  } else {
-    const baseCount = 7 + Math.floor(wave * 1.4);
-    enemiesToSpawn = baseCount;
-    spawnInterval = Math.max(16, 40 - wave * 1.3);
-  }
-}
-
-function spawnEnemy() {
-  if (enemiesToSpawn <= 0) return;
-
-  spawnTimer++;
-  if (spawnTimer < spawnInterval) return;
-  spawnTimer = 0;
-
-  if (isBossWave(wave)) {
-    const keys = Object.keys(bossTypes);
-    const bossKey = keys[Math.floor(Math.random() * keys.length)];
-    enemies.push(new Enemy("boss", wave, true, bossKey));
-    enemiesToSpawn = 0;
-    return;
-  }
-
-  const kinds = ["ork","zombie","demon","slime","beast","shield","dash"];
-  const idx = Math.floor(Math.random() * kinds.length);
-  const kind = kinds[idx];
-
-  enemies.push(new Enemy(kind, wave));
-  enemiesToSpawn--;
-}
-
-function togglePause() {
-  paused = !paused;
-}
-
-function loop() {
-  if (!gameRunning) return;
-
-  if (!paused) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    drawBackground();
+/* ======================================================
+   GAME LOOP
+====================================================== */
+function loop(){
+  if(!gameRunning) return;
+  if(!paused){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     drawPath();
 
-    if (!waveInProgress && enemies.length === 0) {
-      startWave();
-    }
+    if(enemies.length===0) spawnWave();
 
-    if (waveInProgress) {
-      spawnEnemy();
-      if (enemiesToSpawn <= 0 && enemies.length === 0) {
-        waveInProgress = false;
-        wave++;
-        let bonus = 40 + wave * 6;
-        if (wave > 5) bonus += 20;
-        if (wave > 10) bonus += 40;
-        money += bonus * prestigeMultiplierMoney();
-      }
-    }
+    enemies.forEach(e=>e.update());
+    towers.forEach(t=>t.update());
+    bullets.forEach(b=>b.update());
 
-    applySynergies();
+    enemies=enemies.filter(e=>e.hp>0);
+    bullets=bullets.filter(b=>!b.dead);
 
-    enemies.forEach(e => e.update());
-    towers.forEach(t => t.update());
-    bullets.forEach(b => b.update());
-    particles.forEach(p => p.update());
+    enemies.forEach(e=>e.draw());
+    towers.forEach(t=>t.draw());
+    bullets.forEach(b=>b.draw());
 
-    enemies = enemies.filter(e => e.hp > 0);
-    bullets = bullets.filter(b => !b.dead);
-    particles = particles.filter(p => !p.isDead());
-
-    enemies.forEach(e => e.draw());
-    towers.forEach(t => t.draw());
-    bullets.forEach(b => b.draw());
-    particles.forEach(p => p.draw());
-
-    drawHUD();
-
-    if (lives <= 0) {
-      endGame();
-    }
+    updateUI();
+    if(lives<=0) endGame();
   }
-
   requestAnimationFrame(loop);
 }
 
-function drawBackground() {
-  ctx.save();
-  ctx.globalAlpha = 0.15;
-  for (let i = 0; i < 80; i++) {
-    const x = (i * 73) % canvas.width;
-    const y = (i * 41) % canvas.height;
-    ctx.fillStyle = i % 2 === 0 ? "#222233" : "#1a1a26";
-    ctx.fillRect(x, y, 40, 40);
+/* ======================================================
+   GAME FLOW
+====================================================== */
+function spawnWave(){
+  for(let i=0;i<6+wave;i++){
+    const keys=Object.keys(ENEMIES);
+    enemies.push(new Enemy(keys[Math.floor(Math.random()*keys.length)]));
   }
-  ctx.restore();
+  if(wave%10===0) enemies.push(new Enemy(null,true));
+  wave++;
 }
 
-function drawPath() {
-  ctx.strokeStyle = "#3a3a3a";
-  ctx.lineWidth = 46;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) {
-    ctx.lineTo(path[i].x, path[i].y);
-  }
-  ctx.stroke();
-
-  ctx.strokeStyle = "#777777";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) {
-    ctx.lineTo(path[i].x, path[i].y);
-  }
-  ctx.stroke();
+function startGame(){
+  money=100*(1+prestige.money*0.1);
+  lives=20; score=0; wave=1;
+  enemies=[]; towers=[]; bullets=[];
+  paused=false; gameRunning=true;
+  freezeCharges=2; airstrikeCharges=2;
+  document.getElementById("overlay").style.display="none";
+  setupShop();
+  loop();
 }
 
-function drawHUD() {
-  document.getElementById("stats").innerText =
-    `💰 ${Math.floor(money)}   ❤️ ${lives}   ⭐ ${score}`;
-  document.getElementById("waveInfo").innerText =
-    `Bølge ${wave}${waveInProgress ? " (i gang)" : ""}`;
-
-  const best = localStorage.getItem(bestScoreKey) || 0;
-  document.getElementById("bestScore").innerText = `Beste score: ${best}`;
+function endGame(){
+  gameRunning=false;
+  document.getElementById("overlay").style.display="flex";
+  document.getElementById("finalScore").innerText="Score: "+score;
+  prestige.points+=Math.floor(wave/10);
+  localStorage.setItem("td_prestige_v2",JSON.stringify(prestige));
 }
 
-function endGame() {
-  gameRunning = false;
-  const best = Math.max(score, localStorage.getItem(bestScoreKey) || 0);
-  localStorage.setItem(bestScoreKey, best);
-  document.getElementById("finalScore").innerText =
-    `Score: ${score} (Beste: ${best})`;
-  document.getElementById("overlay").style.display = "flex";
-
-  const gained = Math.floor(wave / 10);
-  if (gained > 0) {
-    prestige.points += gained;
-    savePrestige();
-    updatePrestigeUI();
-  }
-}
-
-canvas.addEventListener("pointerdown", e => {
-  const r = canvas.getBoundingClientRect();
-  const x = e.clientX - r.left;
-  const y = e.clientY - r.top;
-
-  selectedTower = towers.find(t => Math.hypot(t.x - x, t.y - y) < 16);
-  if (selectedTower) {
-    updateTowerUI();
-    showUpgradeChoices();
-    return;
-  }
-
-  document.getElementById("upgradeChoices").innerHTML = "";
-
-  if (isOnPath(x, y)) return;
-
-  const tType = towerTypes[selectedTowerType];
-  if (!tType) return;
-
-  if (money >= tType.cost) {
-    towers.push(new Tower(x, y, selectedTowerType));
-    money -= tType.cost;
-    updateTowerUI();
+/* ======================================================
+   UI / INPUT
+====================================================== */
+canvas.addEventListener("pointerdown",e=>{
+  const r=canvas.getBoundingClientRect();
+  const x=e.clientX-r.left, y=e.clientY-r.top;
+  if(money>=TOWERS[selectedTowerType].cost){
+    towers.push(new Tower(x,y,selectedTowerType));
+    money-=TOWERS[selectedTowerType].cost;
   }
 });
 
-function isOnPath(x, y) {
-  const threshold = 26;
-  for (let i = 0; i < path.length - 1; i++) {
-    const a = path[i];
-    const b = path[i + 1];
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const length = Math.hypot(dx, dy);
-    const t = ((x - a.x) * dx + (y - a.y) * dy) / (length * length);
-    const clampedT = Math.max(0, Math.min(1, t));
-    const projX = a.x + clampedT * dx;
-    const projY = a.y + clampedT * dy;
-    const dist = Math.hypot(x - projX, y - projY);
-    if (dist < threshold) return true;
-  }
-  return false;
-}
-
-function updateTowerUI() {
-  const ui = document.getElementById("towerUI");
-  if (selectedTower) {
-    const cost = selectedTower.getUpgradeCost();
-    ui.innerHTML = `
-      <div class="label">Valgt tårn</div>
-      Type: ${towerTypes[selectedTower.typeKey].name}<br>
-      Nivå: ${selectedTower.level}<br>
-      Skade: ${Math.round(selectedTower.damage)}<br>
-      Rekkevidde: ${Math.round(selectedTower.range)}<br>
-      Skuddtakt: ${selectedTower.fireRate}<br>
-      <button onclick="sellSelectedTower()">Selg (+${Math.floor(cost/2)})</button>
-    `;
-  } else {
-    const tType = towerTypes[selectedTowerType];
-    ui.innerHTML = `
-      <div class="label">Plasser tårn</div>
-      Valgt type: ${tType.name} (kost: ${tType.cost})<br>
-      Skade: ${tType.baseDamage}, Rekkevidde: ${tType.baseRange}
-    `;
+function setupShop(){
+  const s=document.getElementById("shop");
+  s.innerHTML="";
+  for(const k in TOWERS){
+    const b=document.createElement("button");
+    b.className="shopBtn";
+    b.textContent=k+" ("+TOWERS[k].cost+")";
+    b.onclick=()=>selectedTowerType=k;
+    s.appendChild(b);
   }
 }
 
-function showUpgradeChoices() {
-  const box = document.getElementById("upgradeChoices");
-  box.innerHTML = "";
-  if (!selectedTower) return;
-
-  const cost = selectedTower.getUpgradeCost();
-  if (money < cost) {
-    box.innerText = `Oppgradering koster ${cost}, du har ${Math.floor(money)}.`;
-    return;
-  }
-
-  if (selectedTower.level === 1) {
-    box.innerHTML = `
-      <div class="label">Velg oppgradering (nivå 2)</div>
-      <button onclick="upgradeSelected('rapid')">Rapid Fire (+fart)</button>
-      <button onclick="upgradeSelected('pierce')">Armor Piercing (+skade)</button>
-    `;
-  } else if (selectedTower.level === 2) {
-    if (selectedTower.path[0] === "rapid") {
-      box.innerHTML = `
-        <div class="label">Velg oppgradering (nivå 3)</div>
-        <button onclick="upgradeSelected('gatling')">Gatling Mode (mye raskere)</button>
-      `;
-    } else if (selectedTower.path[0] === "pierce") {
-      box.innerHTML = `
-        <div class="label">Velg oppgradering (nivå 3)</div>
-        <button onclick="upgradeSelected('sniper')">Sniper Training (+skade +rekkevidde)</button>
-      `;
-    } else {
-      box.innerHTML = `
-        <div class="label">Oppgrader</div>
-        <button onclick="upgradeSelected(null)">Standard oppgradering</button>
-      `;
-    }
-  } else {
-    box.innerHTML = `
-      <div class="label">Oppgrader</div>
-      <button onclick="upgradeSelected(null)">Standard oppgradering (${cost})</button>
-    `;
-  }
+function updateUI(){
+  stats.innerText=`💰${Math.floor(money)} ❤️${lives} ⭐${score}`;
+  waveInfo.innerText=`Wave ${wave}`;
+  bestScore.innerText=`Prestige points: ${prestige.points}`;
+  abilityInfo.innerText=`Freeze ${freezeCharges} | Airstrike ${airstrikeCharges}`;
 }
 
-function upgradeSelected(choice) {
-  if (!selectedTower) return;
-  selectedTower.upgrade(choice);
-  updateTowerUI();
-  showUpgradeChoices();
-}
+function togglePause(){ paused=!paused; }
 
-function sellSelectedTower() {
-  if (!selectedTower) return;
-  const refund = Math.floor(selectedTower.getUpgradeCost() / 2);
-  money += refund;
-  towers = towers.filter(t => t !== selectedTower);
-  selectedTower = null;
-  document.getElementById("upgradeChoices").innerHTML = "";
-  updateTowerUI();
-}
-
-function useFreeze() {
-  if (!gameRunning || freezeCharges <= 0) return;
+function useFreeze(){
+  if(freezeCharges<=0) return;
   freezeCharges--;
-  enemies.forEach(e => e.applySlow(0.01, 180));
-  updateAbilityInfo();
+  enemies.forEach(e=>e.speed=0.1);
+  setTimeout(()=>enemies.forEach(e=>e.speed=e.baseSpeed),2000);
 }
-
-function useAirstrike() {
-  if (!gameRunning || airstrikeCharges <= 0) return;
+function useAirstrike(){
+  if(airstrikeCharges<=0) return;
   airstrikeCharges--;
-  enemies.forEach(e => {
-    e.hp -= 80;
-  });
-  for (let i = 0; i < 40; i++) {
-    particles.push(new Particle(
-      Math.random() * canvas.width,
-      Math.random() * canvas.height,
-      "orange",
-      30,
-      0.9
-    ));
-  }
-  updateAbilityInfo();
+  enemies.forEach(e=>e.hp-=80);
 }
 
-function updateAbilityInfo() {
-  const el = document.getElementById("abilityInfo");
-  el.innerText = `Freeze: ${freezeCharges}  |  Airstrike: ${airstrikeCharges}`;
+function doPrestige(){
+  if(prestige.points<=0) return;
+  prestige.dmg++; prestige.points--;
+  localStorage.setItem("td_prestige_v2",JSON.stringify(prestige));
 }
 
-function applySynergies() {
-  for (let t of towers) {
-    t.range = t.baseRange;
-    t.damage = t.baseDamage;
-  }
-
-  for (let t of towers) {
-    for (let other of towers) {
-      if (t === other) continue;
-      const dist = Math.hypot(t.x - other.x, t.y - other.y);
-      if (dist < 120) {
-        if (t.typeKey === "mage" && other.typeKey === "frost") {
-          t.damage *= 1.3;
-        }
-        if (t.typeKey === "splash" && other.typeKey === "flame") {
-          t.damage *= 1.2;
-        }
-        if (t.typeKey === "laser" && other.typeKey === "sniper") {
-          t.damage *= 1.15;
-        }
-        if (t.typeKey === "soldier" && other.typeKey === "frost") {
-          t.damage *= 1.1;
-        }
-      }
-    }
-  }
+function drawPath(){
+  ctx.strokeStyle="#444"; ctx.lineWidth=40; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(path[0].x,path[0].y);
+  path.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.stroke();
 }
 
-function doPrestige() {
-  if (gameRunning) return;
-  if (prestige.points <= 0) return;
-
-  const choice = prompt(
-    "Velg hva du vil oppgradere:\n" +
-    "1 = Skade\n2 = Rekkevidde\n3 = Startpenger\n4 = Belønning\n5 = Ekstra liv\n6 = Ekstra evner"
-  );
-  if (!choice) return;
-  if (prestige.points <= 0) return;
-
-  switch (choice.trim()) {
-    case "1": prestige.dmg++; break;
-    case "2": prestige.range++; break;
-    case "3": prestige.money++; break;
-    case "4": prestige.reward++; break;
-    case "5": prestige.lives++; break;
-    case "6": prestige.abilities++; break;
-    default: return;
-  }
-  prestige.points--;
-  savePrestige();
-  updatePrestigeUI();
-}
-
-loadPrestige();
-setupTowerShop();
-updateTowerUI();
-updateAbilityInfo();
-updatePrestigeUI();
+/* START */
+startGame();
 </script>
 </body>
 </html>
