@@ -1,286 +1,350 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Ultimate Idle Tower Defense</title>
-<style>
-    body {
-        font-family: 'Arial', sans-serif;
-        background: #111;
-        color: #eee;
-        margin: 0;
-        padding: 0;
-    }
-    canvas {
-        display: block;
-        margin: 0 auto;
-        background: #222;
-        border: 1px solid #555;
-    }
-    #ui {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        width: 100%;
-        padding: 10px;
-        z-index: 100;
-        background: rgba(0, 0, 0, 0.7);
-        border-radius: 10px;
-    }
-    button {
-        margin: 5px;
-        padding: 8px 16px;
-        background: #444;
-        color: #eee;
-        border: 2px solid #666;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-    button:hover {
-        background: #666;
-    }
-    button:active {
-        background: #888;
-    }
-    #resources, #skills, #towers, #prestige {
-        margin-top: 10px;
-    }
-    .graph {
-        margin-top: 10px;
-        height: 100px;
-        background: #333;
-        color: #eee;
-        padding: 5px;
-        overflow: auto;
-    }
-    .graph span {
-        display: inline-block;
-        width: 3px;
-        height: 100%;
-        background: rgba(0, 255, 0, 0.7);
-        margin-right: 1px;
-    }
-</style>
-</head>
-<body>
-<div id="ui">
-    <div id="resources">Gold: <span id="gold">0</span> | Prestige: <span id="prestige">0</span></div>
-    <div id="towers">
-        <button onclick="buildTower('basic')">Build Basic Tower (50)</button>
-        <button onclick="buildTower('sniper')">Build Sniper Tower (150)</button>
-        <button onclick="buildTower('cannon')">Build Cannon Tower (300)</button>
-        <button onclick="buildTower('mage')">Build Mage Tower (500)</button>
-    </div>
-    <div id="skills">
-        <strong>Skill Tree:</strong>
-        <button onclick="upgradeSkill('fireRate')">Fire Rate +</button>
-        <button onclick="upgradeSkill('damage')">Damage +</button>
-        <button onclick="upgradeSkill('range')">Range +</button>
-        <button onclick="upgradeSkill('armorPierce')">Armor Pierce +</button>
-    </div>
-    <div id="prestige">
-        <button onclick="prestige()">Prestige</button>
-    </div>
-    <div class="graph" id="dpsGraph">DPS Graph:</div>
-</div>
-<canvas id="gameCanvas" width="800" height="600"></canvas>
-
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-// GAME VARIABLES
-let gold = 0;
-let prestigePoints = 0;
-let enemies = [];
-let towers = [];
-let projectiles = [];
-let dpsHistory = [];
-let waveNumber = 0;
-let enemyWave = [];
-let skills = { fireRate: 1, damage: 1, range: 100, armorPierce: 0 };
-
-// TOWER TYPES CONFIG
-const towerTypes = {
-    basic: { cost: 50, damage: 5, fireRate: 1, range: 100, upgrade: { damage: 10, fireRate: 0.8, range: 120 } },
-    sniper: { cost: 150, damage: 20, fireRate: 0.5, range: 250, upgrade: { damage: 30, fireRate: 0.4, range: 300 } },
-    cannon: { cost: 300, damage: 50, fireRate: 0.2, range: 150, upgrade: { damage: 70, fireRate: 0.15, range: 200 } },
-    mage: { cost: 500, damage: 70, fireRate: 0.8, range: 150, upgrade: { damage: 100, fireRate: 0.6, range: 180 } }
-};
-
-// ENEMY TYPES CONFIG
-const enemyTypes = [
-    { name: 'Goblin', hp: 50, speed: 1, reward: 5, armor: 0, resistance: 0 },
-    { name: 'Orc', hp: 150, speed: 0.8, reward: 15, armor: 10, resistance: 0 },
-    { name: 'Troll', hp: 500, speed: 0.5, reward: 50, armor: 20, resistance: 0.1 },
-    { name: 'Dragon', hp: 1000, speed: 0.3, reward: 100, armor: 30, resistance: 0.2 }
-];
-
-// SPAWN ENEMIES
-function spawnEnemies() {
-    const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-    const numberOfEnemies = 10 + waveNumber; // Increase enemies each wave
-    for (let i = 0; i < numberOfEnemies; i++) {
-        enemies.push({
-            x: 0,
-            y: Math.random() * 550 + 50,
-            hp: enemyType.hp,
-            maxHp: enemyType.hp,
-            speed: enemyType.speed,
-            reward: enemyType.reward,
-            armor: enemyType.armor,
-            resistance: enemyType.resistance,
-            type: enemyType.name,
-        });
-    }
-    waveNumber++;
-    setTimeout(spawnEnemies, 5000); // New wave every 5 seconds
-}
-
-// TOWER BUILDING
-function buildTower(type) {
-    const tower = towerTypes[type];
-    if (gold >= tower.cost) {
-        gold -= tower.cost;
-        towers.push({ x: Math.random() * 750 + 50, y: Math.random() * 550 + 50, type, level: 1, cooldown: 0 });
-        updateUI();
-    }
-}
-
-// SKILL TREE UPGRADE
-function upgradeSkill(skill) {
-    if (gold >= 100) {
-        gold -= 100;
-        skills[skill] += 0.2;
-        updateUI();
-    }
-}
-
-// PRESTIGE
-function prestige() {
-    prestigePoints += Math.floor(gold / 1000);
-    gold = 0;
-    towers = [];
-    enemies = [];
-    projectiles = [];
-    waveNumber = 0;
-    updateUI();
-}
-
-// SHOOT PROJECTILE
-function shoot(tower, target) {
-    projectiles.push({
-        x: tower.x,
-        y: tower.y,
-        target,
-        damage: towerTypes[tower.type].damage,
-        armorPierce: skills.armorPierce
-    });
-}
-
-// UPDATE GAME LOGIC
-function update(delta) {
-    // Update enemies position
-    enemies.forEach(e => {
-        e.x += e.speed;
-        if (e.x > canvas.width) {
-            e.x = 0;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Idle Tower Defense</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #111;
+            color: #eee;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
         }
-    });
-
-    // Update towers and shooting
-    towers.forEach(t => {
-        t.cooldown -= delta;
-        if (t.cooldown <= 0) {
-            let target = enemies.find(e => distance(e, t) <= towerTypes[t.type].range);
-            if (target) {
-                shoot(t, target);
-                t.cooldown = towerTypes[t.type].fireRate / skills.fireRate;
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #222;
+            border: 1px solid #555;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 100%;
+            padding: 10px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            background: #444;
+            color: #eee;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #666;
+        }
+        button:active {
+            background: #888;
+        }
+        #resources, #skills, #towers, #prestige {
+            margin-top: 10px;
+        }
+        .graph {
+            margin-top: 10px;
+            height: 100px;
+            background: #333;
+            color: #eee;
+            padding: 5px;
+            overflow: auto;
+        }
+        .graph span {
+            display: inline-block;
+            width: 3px;
+            height: 100%;
+            background: rgba(0, 255, 0, 0.7);
+            margin-right: 1px;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            color: white;
+            text-align: center;
+            display: none;
+        }
+        @media (max-width: 600px) {
+            #ui {
+                position: fixed;
+                top: 10px;
+                left: 10px;
+                width: 100%;
+                padding: 15px;
+            }
+            button {
+                width: 100%;
+                margin: 5px 0;
             }
         }
-    });
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="resources">Gold: <span id="gold">0</span> | Prestige: <span id="prestige">0</span> | Wave: <span id="wave">0</span></div>
+        <div id="towers">
+            <button onclick="buildTower('basic')">Build Basic Tower (50)</button>
+            <button onclick="buildTower('sniper')">Build Sniper Tower (150)</button>
+            <button onclick="buildTower('cannon')">Build Cannon Tower (300)</button>
+            <button onclick="buildTower('mage')">Build Mage Tower (500)</button>
+        </div>
+        <div id="skills">
+            <strong>Skill Tree:</strong>
+            <button onclick="upgradeSkill('fireRate')">Fire Rate +</button>
+            <button onclick="upgradeSkill('damage')">Damage +</button>
+            <button onclick="upgradeSkill('range')">Range +</button>
+            <button onclick="upgradeSkill('armorPierce')">Armor Pierce +</button>
+        </div>
+        <div id="prestige">
+            <button onclick="prestige()">Prestige</button>
+        </div>
+        <div class="graph" id="dpsGraph">DPS Graph:</div>
+    </div>
 
-    // Update projectiles
-    projectiles.forEach(p => {
-        const dx = p.target.x - p.x;
-        const dy = p.target.y - p.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 5) {
-            const damage = p.damage * (1 - p.target.armor / 100) * (1 - p.target.resistance);
-            p.target.hp -= damage;
-            p.target.hp = Math.max(0, p.target.hp);
-            p.hit = true;
-            gold += p.target.hp <= 0 ? p.target.reward : 0;
-        } else {
-            p.x += dx * 0.2;
-            p.y += dy * 0.2;
+    <div id="gameOver">
+        <p>YOU WON!</p>
+        <button onclick="restartGame()">Restart</button>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        // Setup canvas
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // GAME VARIABLES
+        let gold = 0;
+        let prestigePoints = 0;
+        let enemies = [];
+        let towers = [];
+        let projectiles = [];
+        let dpsHistory = [];
+        let waveNumber = 0;
+        let enemyWave = [];
+        let skills = { fireRate: 1, damage: 1, range: 100, armorPierce: 0 };
+
+        // GAME STATE
+        let gameOver = false;
+
+        // TOWER TYPES CONFIG
+        const towerTypes = {
+            basic: { cost: 50, damage: 5, fireRate: 1, range: 100 },
+            sniper: { cost: 150, damage: 20, fireRate: 0.5, range: 250 },
+            cannon: { cost: 300, damage: 50, fireRate: 0.2, range: 150 },
+            mage: { cost: 500, damage: 70, fireRate: 0.8, range: 150 }
+        };
+
+        // ENEMY TYPES CONFIG
+        const enemyTypes = [
+            { name: 'Goblin', hp: 50, speed: 1, reward: 5, armor: 0, resistance: 0 },
+            { name: 'Orc', hp: 150, speed: 0.8, reward: 15, armor: 10, resistance: 0 },
+            { name: 'Troll', hp: 500, speed: 0.5, reward: 50, armor: 20, resistance: 0.1 },
+            { name: 'Dragon', hp: 1000, speed: 0.3, reward: 100, armor: 30, resistance: 0.2 }
+        ];
+
+        // SPAWN ENEMIES
+        function spawnEnemies() {
+            if (gameOver) return;
+            const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            const numberOfEnemies = 10 + waveNumber;
+            for (let i = 0; i < numberOfEnemies; i++) {
+                enemies.push({
+                    x: 0,
+                    y: Math.random() * 550 + 50,
+                    hp: enemyType.hp,
+                    maxHp: enemyType.hp,
+                    speed: enemyType.speed,
+                    reward: enemyType.reward,
+                    armor: enemyType.armor,
+                    resistance: enemyType.resistance,
+                    type: enemyType.name,
+                });
+            }
+            waveNumber++;
+            document.getElementById('wave').innerText = waveNumber;
+
+            // Check if the player wins
+            if (waveNumber >= 10) {
+                gameOver = true;
+                document.getElementById('gameOver').style.display = 'block';
+            } else {
+                setTimeout(spawnEnemies, 5000); // Spawn new wave every 5 seconds
+            }
         }
-    });
-    projectiles = projectiles.filter(p => !p.hit);
 
-    // Calculate DPS and update graph
-    const dps = towers.reduce((acc, t) => acc + (towerTypes[t.type].damage * t.level * skills.damage), 0);
-    dpsHistory.push(dps);
-    if (dpsHistory.length > 50) dpsHistory.shift();
-    renderGraph();
-}
+        // TOWER BUILDING
+        function buildTower(type) {
+            if (gameOver) return;
+            const tower = towerTypes[type];
+            if (gold >= tower.cost) {
+                gold -= tower.cost;
+                towers.push({ x: Math.random() * 750 + 50, y: Math.random() * 550 + 50, type });
+                updateUI();
+            }
+        }
 
-// RENDERING GRAPH
-function renderGraph() {
-    const graph = document.getElementById('dpsGraph');
-    graph.innerHTML = dpsHistory.map(v => '<span></span>').join('');
-}
+        // SKILL TREE UPGRADE
+        function upgradeSkill(skill) {
+            if (gameOver) return;
+            if (gold >= 100) {
+                gold -= 100;
+                skills[skill] += 0.2;
+                updateUI();
+            }
+        }
 
-// RENDERING GAME
-function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Draw Towers
-    towers.forEach(t => {
-        ctx.fillStyle = 'cyan';
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, 10, 0, Math.PI * 2);
-        ctx.fill();
-    });
-    // Draw Enemies
-    enemies.forEach(e => {
-        ctx.fillStyle = 'red';
-        ctx.fillRect(e.x - 10, e.y - 10, 20, 20);
-        ctx.fillStyle = 'lime';
-        ctx.fillRect(e.x - 10, e.y - 12, 20 * (e.hp / e.maxHp), 2);
-    });
-    // Draw Projectiles
-    projectiles.forEach(p => {
-        ctx.fillStyle = 'yellow';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-    });
-}
+        // PRESTIGE
+        function prestige() {
+            if (gameOver) return;
+            prestigePoints += Math.floor(gold / 1000);
+            gold = 0;
+            towers = [];
+            enemies = [];
+            projectiles = [];
+            waveNumber = 0;
+            updateUI();
+        }
 
-// DISTANCE CALCULATION
-function distance(a, b) {
-    return Math.hypot(a.x - b.x, a.y - b.y);
-}
+        // SHOOT PROJECTILE
+        function shoot(tower, target) {
+            projectiles.push({
+                x: tower.x,
+                y: tower.y,
+                target,
+                damage: towerTypes[tower.type].damage,
+                armorPierce: skills.armorPierce
+            });
+        }
 
-// UI UPDATE
-function updateUI() {
-    document.getElementById('gold').innerText = Math.floor(gold);
-    document.getElementById('prestige').innerText = prestigePoints;
-}
+        // GAME LOOP
+        function update(delta) {
+            if (gameOver) return;
 
-// GAME LOOP
-let lastTime = 0;
-function loop(timestamp) {
-    const delta = (timestamp - lastTime) / 1000;
-    lastTime = timestamp;
-    update(delta);
-    render();
-    requestAnimationFrame(loop);
-}
+            // Update enemies position
+            enemies.forEach(e => {
+                e.x += e.speed;
+                if (e.x > canvas.width) {
+                    e.x = 0;
+                }
+            });
 
-spawnEnemies();
-loop(0);
-</script>
+            // Update towers and shooting
+            towers.forEach(t => {
+                t.cooldown -= delta;
+                if (t.cooldown <= 0) {
+                    let target = enemies.find(e => distance(e, t) <= towerTypes[t.type].range);
+                    if (target) {
+                        shoot(t, target);
+                        t.cooldown = towerTypes[t.type].fireRate / skills.fireRate;
+                    }
+                }
+            });
+
+            // Update projectiles
+            projectiles.forEach(p => {
+                const dx = p.target.x - p.x;
+                const dy = p.target.y - p.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 5) {
+                    const damage = p.damage * (1 - p.target.armor / 100) * (1 - p.target.resistance);
+                    p.target.hp -= damage;
+                    p.target.hp = Math.max(0, p.target.hp);
+                    p.hit = true;
+                    gold += p.target.hp <= 0 ? p.target.reward : 0;
+                } else {
+                    p.x += dx * 0.2;
+                    p.y += dy * 0.2;
+                }
+            });
+            projectiles = projectiles.filter(p => !p.hit);
+
+            // Calculate DPS and update graph
+            const dps = towers.reduce((acc, t) => acc + (towerTypes[t.type].damage * t.level * skills.damage), 0);
+            dpsHistory.push(dps);
+            if (dpsHistory.length > 50) dpsHistory.shift();
+            renderGraph();
+        }
+
+        // RENDERING GRAPH
+        function renderGraph() {
+            const graph = document.getElementById('dpsGraph');
+            graph.innerHTML = dpsHistory.map(v => '<span></span>').join('');
+        }
+
+        // RENDERING GAME
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw Towers
+            towers.forEach(t => {
+                ctx.fillStyle = 'cyan';
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            // Draw Enemies
+            enemies.forEach(e => {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(e.x - 10, e.y - 10, 20, 20);
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(e.x - 10, e.y - 12, 20 * (e.hp / e.maxHp), 2);
+            });
+            // Draw Projectiles
+            projectiles.forEach(p => {
+                ctx.fillStyle = 'yellow';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        // DISTANCE CALCULATION
+        function distance(a, b) {
+            return Math.hypot(a.x - b.x, a.y - b.y);
+        }
+
+        // UI UPDATE
+        function updateUI() {
+            document.getElementById('gold').innerText = Math.floor(gold);
+            document.getElementById('prestige').innerText = prestigePoints;
+        }
+
+        // RESTART GAME
+        function restartGame() {
+            gameOver = false;
+            gold = 0;
+            prestigePoints = 0;
+            waveNumber = 0;
+            enemies = [];
+            towers = [];
+            projectiles = [];
+            dpsHistory = [];
+            document.getElementById('gameOver').style.display = 'none';
+            spawnEnemies();
+        }
+
+        // GAME LOOP
+        let lastTime = 0;
+        function loop(timestamp) {
+            const delta = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+            update(delta);
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        spawnEnemies();
+        loop(0);
+    </script>
 </body>
 </html>
